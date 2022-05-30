@@ -1,0 +1,71 @@
+```{r}
+
+Top1 <- TopgenesH[row.names(TopgenesH) %in% row.names(TopgenesQ),]
+Top2 <- Top1[row.names(Top1) %in% row.names(TopgenesL),]
+Top3 <- Top2[row.names(Top2) %in% row.names(TopgenesI),]
+Top4 <- Top3[row.names(Top3) %in% row.names(TopgenesSc),]
+
+Top4 <- row.names(Top4)
+
+ require(gprofiler2)
+gostresTOP = gost(query = Top4,
+               organism = "mmusculus",
+               numeric_ns = "ENTREZGENE_ACC", significant=FALSE)
+
+ gostplot(gostresTOP, interactive = T)
+title: "Common Topgenes"
+
+```
+
+```{r}
+UHL <- UpgenesHeart[row.names(UpgenesHeart) %in% row.names(UpgenesLiver),]
+UHQ <- UpgenesHeart[row.names(UpgenesHeart) %in% row.names(UpgenesQuadriceps),]
+UHI <- UpgenesHeart[row.names(UpgenesHeart) %in% row.names(UpgenesIntestine),]
+UHS <- UpgenesHeart[row.names(UpgenesHeart) %in% row.names(UpgenesscWAT),]
+ULQ <- UpgenesLiver[row.names(UpgenesLiver) %in% row.names(UpgenesQuadriceps),]
+ULI <- UpgenesLiver[row.names(UpgenesLiver) %in% row.names(UpgenesIntestine),]
+ULS <- UpgenesLiver[row.names(UpgenesLiver) %in% row.names(UpgenesscWAT),]
+UIQ <- UpgenesIntestine[row.names(UpgenesIntestine) %in% row.names(UpgenesQuadriceps),]
+UIS <- UpgenesIntestine[row.names(UpgenesIntestine) %in% row.names(UpgenesscWAT),]
+UQS <- UpgenesQuadriceps[row.names(UpgenesQuadriceps) %in% row.names(UpgenesscWAT),]
+
+
+DHL <- DowngenesHeart[row.names(DowngenesHeart) %in% row.names(DowngenesLiver),]
+DHQ <- DowngenesHeart[row.names(DowngenesHeart) %in% row.names(DowngenesQuadriceps),]
+DHI <- DowngenesHeart[row.names(DowngenesHeart) %in% row.names(DowngenesIntestine),]
+DHS <- DowngenesHeart[row.names(DowngenesHeart) %in% row.names(DowngenesscWAT),]
+DLQ <- DowngenesLiver[row.names(DowngenesLiver) %in% row.names(DowngenesQuadriceps),]
+DLI <- DowngenesLiver[row.names(DowngenesLiver) %in% row.names(DowngenesIntestine),]
+DLS <- DowngenesLiver[row.names(DowngenesLiver) %in% row.names(DowngenesscWAT),]
+DIQ <- DowngenesIntestine[row.names(DowngenesIntestine) %in% row.names(DowngenesQuadriceps),]
+DIS <- DowngenesIntestine[row.names(DowngenesIntestine) %in% row.names(DowngenesscWAT),]
+DQS <- DowngenesQuadriceps[row.names(DowngenesQuadriceps) %in% row.names(DowngenesscWAT),]
+
+
+
+
+UD1 <- DowngenesscWAT[row.names(DowngenesscWAT) %in% row.names(UpgenesLiver),]
+UD2 <- UpgenesscWAT[row.names(UpgenesscWAT) %in% row.names(DowngenesLiver),]
+
+
+
+df = list(DownHeart =DOwngenesHeart,UpHeart=UPgenesHeart,DownLiver=DOwngenesLiver,UpLiver=UPgenesLiver,DownQuadriceps=DOwngenesQuadriceps,UpQuadrices=UPgenesQuadriceps,DownScWAT=DOwngenesscWAT,UpScWAT=UPgenesscWAT,DownIntestine=DOwngenesIntestine,UpIntestine=UPgenesIntestine)
+
+ library(ComplexHeatmap)
+df= list_to_matrix(df)
+m = make_comb_mat(df,mode = "distinct")
+comb_name(m)
+set_size(m)
+library(UpSetR)
+
+pdf('Upset Plot')
+UpSet(m[comb_degree(m) >= 2],comb_col = c("black","black","blue","red")[comb_degree(m)], comb_order = order(comb_size(m [comb_degree(m) >= 2])),top_annotation = upset_top_annotation(m [comb_degree(m) >= 2], add_numbers = TRUE),  right_annotation = upset_right_annotation(m [comb_degree(m) >= 2], add_numbers = TRUE))
+dev.off()
+```
+
+
+
+
+
+Up1 <-  UpgenesLiver[row.names(UpgenesLiver) %in% row.names(UpgenesLiver),]
+

@@ -1,0 +1,194 @@
+title: "MultitissueDataQuadricepsFinal"
+---
+
+```{r}
+#Download Data
+setwd("~/Documents/MultiTisssueDiet")
+MultiTissueData=read.table("d_20162021_BXDMultiTissueDiet_Williams_mRNA_DATA.csv", row.names=1, header=F, skip= 2,sep=",", na.strings="")
+Genes <- MultiTissueData[c(1)]
+Genes <- Genes[-c(1:7),]
+#Delete missing values 
+NewMultiTissueData <- MultiTissueData[, which(colMeans(!is.na(MultiTissueData)) > 0.5)]
+NewMultiTissueData <- NewMultiTissueData[ -c(1,2) ]
+MultiTissueData_header=read.table("NewMultiTissueData", nrows=6, row.names=1, header=T, sep=",")
+MultiTissueData_header=MultiTissueData_header[-c(1),-c(1)]
+
+
+NewMultiTissueData=read.table("NewMultiTissueData", row.names=1, header=T,  na.strings="", sep=",", skip=7, stringsAsFactors=FALSE)
+row.names(NewMultiTissueData)<- Genes
+NewMultiTissueData <- NewMultiTissueData[-c(1)]
+MultiTissueData = MultiTissueData[1:nrow(MultiTissueData),3:ncol(MultiTissueData)] 
+colnames(MultiTissueData_header)=colnames(NewMultiTissueData)
+
+```
+
+```{r}
+#only Quadriceps
+QuadricepsTissueData=matrix(NA, nrow=nrow(NewMultiTissueData), ncol=length(NewMultiTissueData))
+for(i in 1:length(NewMultiTissueData)) {
+  if(as.character(MultiTissueData_header["Tissue",i])=="Quadriceps") { QuadricepsTissueData[,i]=as.numeric(as.character(NewMultiTissueData[,i]))	}
+} 
+rownames(QuadricepsTissueData)=rownames(NewMultiTissueData)
+colnames(QuadricepsTissueData)=colnames(NewMultiTissueData)
+
+QuadricepsTissueData <-QuadricepsTissueData[, which(colMeans(!is.na(QuadricepsTissueData)) > 0.5)]
+QuadricepsTissueData = as.data.frame(QuadricepsTissueData)  
+write.csv(QuadricepsTissueData, "QuadricepsTissueData")
+
+```
+
+```{r}
+#create sampleInfo
+sampleInfo <- as.matrix(MultiTissueData_header)
+sampleInfo <- as.data.frame(t(sampleInfo))
+sampleInfo = sampleInfo[,-c(6)]
+
+#only for Quadriceps
+SampleInfoQuadriceps <- sampleInfo[sampleInfo$Tissue == 'Quadriceps',]
+write.csv(SampleInfoQuadriceps, "SampleInfoQuadriceps", sep = ",")
+```
+
+```{r}
+
+#boxplots
+library(tidyr)
+library(dplyr)
+require(ggplot2)
+
+plotDataQuadriceps_CD<- gather(QuadricepsTissueData[, SampleInfoQuadriceps$Diet == "CD"], key = "SampleID", value = "CPM")
+jpeg("BoxPlotQuadriceps_CD.jpeg", width = 100, height = 10, units = "cm", res = 100) 
+ggplot(plotDataQuadriceps_CD, aes(x = SampleID, y = CPM)) + geom_boxplot() + theme_classic()
+dev.off()
+
+plotDataQuadriceps_HF<- gather(QuadricepsTissueData[, SampleInfoQuadriceps$Diet == "HF"], key = "SampleID", value = "CPM")
+jpeg("BoxPlotQuadriceps_HF.jpeg", width = 100, height = 10, units = "cm", res = 100) 
+ggplot(plotDataQuadriceps_CD, aes(x = SampleID, y = CPM)) + geom_boxplot() + theme_classic()
+dev.off()
+
+```
+```{r}
+# density plots
+
+jpeg("DensityPlotQuadriceps_CD.jpeg", width = 50, height = 20, units = "cm", res = 100) 
+ggplot(plotDataQuadriceps_CD, aes(x = CPM, color = SampleID)) + geom_density(alpha = 0.2) + 
+        theme(panel.background = element_blank())
+dev.off()
+
+
+jpeg("DensityPlotQuadriceps_HF.jpeg", width = 50, height = 20, units = "cm", res = 100) 
+ggplot(plotDataQuadriceps_HF, aes(x = CPM, color = SampleID)) + geom_density(alpha = 0.2) + 
+        theme(panel.background = element_blank())
+dev.off()
+
+
+
+```
+```{r}
+# Principal component analysis 
+
+
+require(PCAtools)
+
+pcaRes <- pca(QuadricepsTissueData, metadata = SampleInfoQuadriceps)
+
+getComponents(pcaRes)
+getVars(pcaRes)
+getLoadings(pcaRes)
+plotloadings(pcaRes, drawConnectors=TRUE)
+screeplot(pcaRes, hline = 80)
+biplot(pcaRes, colby = 'Diet')
+
+
+```
+
+
+```{r}
+#differential gene expression analysis limma
+require(limma)
+require(qvalue) #installs limma and qvalue packages
+design.matrix <- model.matrix(~0 + Diet , SampleInfoQuadriceps) #Creates the design matrix
+fit <- lmFit(QuadricepsTissueData, design.matrix)# fits linear model
+
+contrast.matrix <- makeContrasts(CDvsHF = DietHF - DietCD
+                             , levels=design.matrix) #creates the contrast matrix
+fit2 <- contrasts.fit(fit, contrast.matrix) # make comparison between diets
+fit3 <- eBayes(fit2) #t-statistic and F-statistic
+topTable(fit3)
+results <- decideTests(fit3)
+summary(results)
+fit4 = topTable(fit3, n = Inf)
+fit4$diffexpressed <- "NO"
+fit4$diffexpressed[fit4$logFC > 0.4 & fit4$adj.P.Val < 0.05] <- "UP"
+fit4$diffexpressed[fit4$logFC < -0.4 & fit4$adj.P.Val < 0.05] <- "DOWN"
+fit4$delabel1 <- "NO"
+fit4$delabel1[fit4$logFC > 0.6 & fit4$adj.P.Val < 0.00005] <- "UP"
+fit4$delabel1[fit4$logFC < -0.6 & fit4$adj.P.Val < 0.00005] <- "DOWN"
+fit4$delabel <- NA
+fit4$delabel[fit4$delabel1 != "NO"] <- row.names(fit4)[fit4$delabel1 != "NO"]
+
+
+#plot volcanoplot
+pdf('volcanoplot_Quadriceps.pdf')
+ggplot(fit4, aes(x=logFC, y=-log10(adj.P.Val),col=diffexpressed,label=delabel)) +
+         theme_classic()+
+  geom_point(alpha = 1,
+             size = 2) +
+  xlab("Log2FoldChange") +
+  ylab("-Log10(P-Value)")+
+  xlim(-2,2) +
+  scale_color_manual(values = c("blue",
+                                "grey",
+                                "red")) + 
+  labs(title = "Volcanoplot Quadriceps" ) +
+       geom_text_repel(position = "identity",force = 2,
+  force_pull = 0.5,) +
+          geom_vline(xintercept=c(-0.4, 0.4), col="red") +
+        geom_hline(yintercept=-log10(0.05), col="red")
+dev.off()
+
+# other method with Glimma
+library(Glimma)
+glimmaVolcano(fit3,  p.adj.method = "BH")
+```
+
+```{r}
+#make list with most diffeentially expressed genes
+Topgenes<- topTable(fit3,sort.by= "P", n = Inf) 
+Topgenes <- as.data.frame(Topgenes)
+Topgenes <- Topgenes[Topgenes$adj.P.Val < 0.05,] #all significant genes
+UpgenesQuadriceps<- Topgenes[Topgenes$logFC > 0.3,] # significantly uperculated genes
+DowngenesQuadriceps <- Topgenes[Topgenes$logFC < -0.3,] #significantly downregulated genes
+
+
+Topgene_listQuadriceps <- row.names(Topgenes)
+UPgenesQuadriceps <- row.names(UpgenesQuadriceps)
+DowngenesQuadriceps <-row.names(DowngenesQuadriceps)
+
+#Gene onthology analysis with ggprofiler2
+
+require(gprofiler2)
+
+#upregulated genes
+gostresUP = gost(query = UPgenesQuadriceps,
+               organism = "mmusculus",
+               numeric_ns = "ENTREZGENE_ACC")
+
+gostplot(gostresUP, interactive = T)
+
+#Downregulated genes
+gostresDown = gost(query = DowngenesQuadriceps,
+               organism = "mmusculus",
+               numeric_ns = "ENTREZGENE_ACC")
+
+gostplot(gostresDown, interactive = T)
+
+#Barplot
+a = cbind(gostresUP$result$term_name,gostresUP$result$intersection_size)
+GO = as.data.frame(a[c(19,20,23,26,29,36,97,92,94),])
+
+par(mar = c(5, 20, 4, 2) + 0.1)
+barplot(as.numeric(GO$V2),names.arg = GO$V1, horiz=TRUE, las=1,col="red", main = "Gene Ontology analysis Quadriceps", xlab= "Gene counts")
+
+```
+par(mar = c(5, 20, 4, 2) + 0.1)
+barplot(as.numeric(GO$V2),names.arg = GO$V1, horiz=TRUE, las=1,col="red", main = "Gene Ontology analysis Quadriceps", xlab= "Gene counts")

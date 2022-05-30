@@ -1,0 +1,40 @@
+---
+title: "chi squared test"
+output: html_notebook
+---
+```{r}
+# download data
+setwd("~/Documents/MultiTisssueDiet/linearmodel")
+Quadriceps <- read.csv("~/Documents/MultiTisssueDiet/linearmodel/AncovaBodyweigtQuadriceps.csv")
+TestQuadriceps <- read.csv("~/Documents/MultiTisssueDiet/linearmodel/TestAnovaBodyweightQuadricpes.csv")
+
+scWAT<- read.csv("~/Documents/MultiTisssueDiet/linearmodel/AncovaBodyweigtscWAT.csv")
+TestscWAT <- read.csv("~/Documents/MultiTisssueDiet/linearmodel/TestAnovaBodyweightscWAT.csv")
+
+Intestine<- read.csv("~/Documents/MultiTisssueDiet/linearmodel/AncovaVarBodyweightIntestine.csv")
+TestIntestine<- read.csv("~/Documents/MultiTisssueDiet/linearmodel/TAnovaVarExBodyweightIntestine.csv")
+
+Heart<- read.csv("~/Documents/MultiTisssueDiet/linearmodel/AncovaBodyweigtHeart.csv")
+TestHeart<- read.csv("~/Documents/MultiTisssueDiet/linearmodel/TestAnovaBodyweigHeart.csv")
+
+Liver<- read.csv("~/Documents/MultiTisssueDiet/linearmodel/AncovaBodyweigtLiver.csv")
+TestLiver<- read.csv("~/Documents/MultiTisssueDiet/linearmodel/TestAnovaBodyweigLiver.csv")
+```
+
+```{r}
+# datasetpreparation
+InputData = Intestine
+TestData = TestIntestine
+```
+
+```{r}
+#Kolmogorov Smirnov Test
+
+ks.test(InputData$Bo,TestData$Bo)
+
+ks.test(InputData$Re,TestData$Re)
+```
+
+
+
+

@@ -1,0 +1,182 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+---
+title: "TSNE"
+
+```{r}
+#load Data 
+setwd("~/Documents/MultiTisssueDiet")
+MultiTissueData=read.table("d_20162021_BXDMultiTissueDiet_Williams_mRNA_DATA.csv", row.names=1, header=F, skip= 2,sep=",", na.strings="")
+
+
+NewMultiTissueData <- MultiTissueData[, which(colMeans(!is.na(MultiTissueData)) > 0.5)] #Delete missing values 
+NewMultiTissueData <- NewMultiTissueData[ -c(1,2) ]
+MultiTissueData_header=read.table("NewMultiTissueData", nrows=6, row.names=1, header=T, sep=",")
+MultiTissueData_header=MultiTissueData_header[-c(1),-c(1)]
+
+NewMultiTissueData=read.table("NewMultiTissueData", row.names=1, header=T,  na.strings="", sep=",", skip=7, stringsAsFactors=FALSE)
+MultiTissueData = MultiTissueData[1:nrow(MultiTissueData),3:ncol(MultiTissueData)] 
+NewMultiTissueData <- as.data.frame(NewMultiTissueData[,-c(1)])
+colnames(NewMultiTissueData)=colnames(MultiTissueData_header)
+na.exclude(NewMultiTissueData)
+
+
+
+```
+
+```{r}
+
+# load package
+require(Rtsne)
+
+
+```
+
+
+```{r}
+#only heart
+HeartTissueData=matrix(NA, nrow=nrow(NewMultiTissueData), ncol=length(NewMultiTissueData))
+for(i in 1:length(NewMultiTissueData)) {
+  if(as.character(MultiTissueData_header["Tissue",i])=="Heart") { HeartTissueData[,i]=as.numeric(as.character(NewMultiTissueData[,i]))	}
+} 
+rownames(HeartTissueData)=rownames(NewMultiTissueData)
+colnames(HeartTissueData)=colnames(NewMultiTissueData)
+
+HeartTissueData <-HeartTissueData[, which(colMeans(!is.na(HeartTissueData)) > 0.5)]#Delete missing values 
+HeartTissueData = as.data.frame(HeartTissueData)  
+
+```
+
+```{r}
+#only Liver
+LiverTissueData=matrix(NA, nrow=nrow(NewMultiTissueData), ncol=length(NewMultiTissueData))
+for(i in 1:length(NewMultiTissueData)) {
+  if(as.character(MultiTissueData_header["Tissue",i])=="Liver") { LiverTissueData[,i]=as.numeric(as.character(NewMultiTissueData[,i]))	}
+} 
+rownames(LiverTissueData)=rownames(NewMultiTissueData)
+colnames(LiverTissueData)=colnames(NewMultiTissueData)
+
+LiverTissueData <-LiverTissueData[, which(colMeans(!is.na(LiverTissueData)) > 0.5)]#Delete missing values 
+LiverTissueData = as.data.frame(LiverTissueData)  
+
+```
+
+
+```{r}
+#only Quadriceps
+QuadricepsTissueData=matrix(NA, nrow=nrow(NewMultiTissueData), ncol=length(NewMultiTissueData))
+for(i in 1:length(NewMultiTissueData)) {
+  if(as.character(MultiTissueData_header["Tissue",i])=="Quadriceps") { QuadricepsTissueData[,i]=as.numeric(as.character(NewMultiTissueData[,i]))	}
+} 
+rownames(QuadricepsTissueData)=rownames(NewMultiTissueData)
+colnames(QuadricepsTissueData)=colnames(NewMultiTissueData)
+
+QuadricepsTissueData <-QuadricepsTissueData[, which(colMeans(!is.na(QuadricepsTissueData)) > 0.5)]#Delete missing values 
+QuadricepsTissueData = as.data.frame(QuadricepsTissueData)  
+
+```
+
+```{r}
+#only scWAT
+scWATTissueData=matrix(NA, nrow=nrow(NewMultiTissueData), ncol=length(NewMultiTissueData))
+for(i in 1:length(NewMultiTissueData)) {
+  if(as.character(MultiTissueData_header["Tissue",i])=="scWAT") { scWATTissueData[,i]=as.numeric(as.character(NewMultiTissueData[,i]))	}
+} 
+rownames(scWATTissueData)=rownames(NewMultiTissueData)
+colnames(scWATTissueData)=colnames(NewMultiTissueData)
+
+scWATTissueData <-scWATTissueData[, which(colMeans(!is.na(scWATTissueData)) > 0.5)]#Delete missing values 
+scWATTissueData = as.data.frame(scWATTissueData)  
+
+```
+
+```{r}
+#only BAT
+BATTissueData=matrix(NA, nrow=nrow(NewMultiTissueData), ncol=length(NewMultiTissueData))
+for(i in 1:length(NewMultiTissueData)) {
+  if(as.character(MultiTissueData_header["Tissue",i])=="BAT") { BATTissueData[,i]=as.numeric(as.character(NewMultiTissueData[,i]))	}
+} 
+rownames(BATTissueData)=rownames(NewMultiTissueData)
+colnames(BATTissueData)=colnames(NewMultiTissueData)
+
+BATTissueData <-BATTissueData[, which(colMeans(!is.na(BATTissueData)) > 0.5)]#Delete missing values 
+BATTissueData = as.data.frame(BATTissueData)  
+
+```
+
+```{r}
+#only Intestine
+IntestineTissueData=matrix(NA, nrow=nrow(NewMultiTissueData), ncol=length(NewMultiTissueData))
+for(i in 1:length(NewMultiTissueData)) {
+  if(as.character(MultiTissueData_header["Tissue",i])=="Intestine") { IntestineTissueData[,i]=as.numeric(as.character(NewMultiTissueData[,i]))	}
+} 
+rownames(IntestineTissueData)=rownames(NewMultiTissueData)
+colnames(IntestineTissueData)=colnames(NewMultiTissueData)
+
+IntestineTissueData <-IntestineTissueData[, which(colMeans(!is.na(IntestineTissueData)) > 0.5)]#Delete missing values 
+IntestineTissueData[is.na(IntestineTissueData)] = 0 #set NAs to 0
+IntestineTissueData = as.data.frame(IntestineTissueData)  
+
+```
+
+
+```{r}
+#concatenating everything
+Data <- cbind(HeartTissueData,LiverTissueData,QuadricepsTissueData,scWATTissueData,BATTissueData,IntestineTissueData)
+
+```
+
+
+```{r}
+# metadata 
+sampleInfo <- as.matrix(MultiTissueData_header)
+sampleInfo <- as.data.frame(t(sampleInfo))
+sampleInfo = sampleInfo[,-c(6)]
+
+#only for heart
+SampleInfoHeart <- sampleInfo[sampleInfo$Tissue == 'Heart',]
+SampleInfoHeart <- t(SampleInfoHeart)
+#only for Liver
+SampleInfoLiver <- sampleInfo[sampleInfo$Tissue == 'Liver',]
+SampleInfoLiver <- t(SampleInfoLiver)
+#only for Quadriceps
+SampleInfoQuadriceps <- sampleInfo[sampleInfo$Tissue == 'Quadriceps',]
+SampleInfoQuadriceps <- t(SampleInfoQuadriceps)
+#only for scWAT
+SampleInfoscWAT <- sampleInfo[sampleInfo$Tissue == 'scWAT',]
+SampleInfoscWAT <- t(SampleInfoscWAT)
+#only for BAT
+SampleInfoBAT <- sampleInfo[sampleInfo$Tissue == 'BAT',]
+SampleInfoBAT <- t(SampleInfoBAT)
+#only for Intestine
+SampleInfoIntestine <- sampleInfo[sampleInfo$Tissue == 'Intestine',]
+SampleInfoIntestine <- t(SampleInfoIntestine)
+
+#concatenating the data
+metaData <- cbind(SampleInfoHeart,SampleInfoLiver, SampleInfoQuadriceps,SampleInfoscWAT,SampleInfoBAT,SampleInfoIntestine)
+metaData <- t(metaData)
+
+```
+
+
+```{r}
+# create t-SNE plot
+Data <- t(Data)
+metaData <- as.data.frame(metaData)
+Labels <- metaData$Tissue # Define labels as Tissue
+colors = rainbow(length(unique(metaData$Tissue))) #select colour for Labels
+names(colors)= unique(metaData$Tissue)
+Labels2 <- metaData$Diet # Define labels as Diet
+tsne_out <- Rtsne(Data, dims=2, perpelexity = 25, verbose=TRUE)
+colorcount = length(unique(metaData$Tissue))
+getPalette = colorRampPalette(brewer.pal(4,'Set1'))
+df = data.frame (Y1=tsne_out$Y[,1],Y2=tsne_out$Y[,2], labels = Labels)
+require(ggplot2)
+ggplot(df,aes(Y1,Y2,colour=Labels, shape = Labels2)) + geom_point()
+
+```
+
+

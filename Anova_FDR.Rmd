@@ -1,0 +1,110 @@
+---
+title: "Anova and FDR"
+https://www.geeksforgeeks.org/how-to-randomly-shuffle-contents-of-a-single-column-in-r-dataframe/
+---
+```{r}
+#Preparation of the real Dataset
+setwd("~/Documents/MultiTisssueDiet")
+WeightData <- read.csv("~/Documents/MultiTisssueDiet/d_20162021_BXDMultiTissueDiet_Williams_mRNA_DATAwithPhenos_Short.csv",header=F,sep=",", na.strings="")
+NewWeightData <- WeightData[, which(colMeans(!is.na(WeightData)) > 0.5)]
+NewWeightData <- NewWeightData[ -c(1:3), ]
+WData <- as.data.frame (t(NewWeightData))
+
+Samples<-WData[ c(1,2,4,6) ]
+Samples[Samples=="CD"]<-0
+Samples[Samples=="HF"]<-1
+Samples[Samples=="Quadriceps"]<-0
+Samples[Samples=="scWAT"]<-1
+Samples[Samples=="Intestine"]<-2
+Samples[Samples=="Heart"]<-3
+Samples[Samples=="Liver"]<-4
+Samples[Samples=="BAT"]<-5
+
+NewWData<-cbind(Samples,WData)
+NewWData<-NewWData[-c(2,3),-c(5,6,8,10)]
+colnames(NewWData) <- NewWData[c(1),]
+NewWData <- NewWData[-c(1),]
+QWData <- NewWData[NewWData$Tissue == "0",]
+sWData <- NewWData[NewWData$Tissue == "1",]
+IWData <- NewWData[NewWData$Tissue == "2",]
+HWData <- NewWData[NewWData$Tissue == "3",]
+LWData <- NewWData[NewWData$Tissue == "4",]
+```
+
+
+
+
+```{r}
+#permutation of 2 columns
+InputData = QWData
+permutation_count=100
+Test = replicate(permutation_count,(transform(InputData, Bodyweight = sample(Bodyweight),Diet = sample(Diet))))
+Test = as.data.frame(Test)
+TestData = matrix(NA, nrow=dim(Test)[1], ncol=permutation_count)
+Ancova<- vector(mode = "list", length = permutation_count)
+
+for(i in 1:permutation_count)
+{
+TestData[i]= Test[i]
+
+}
+
+for(i in 1:permutation_count) # goes to 100
+for(j in 8:dim(Test)[1]) # goes to 500 (just testing first 492 genes)
+{
+{
+#Ancova[[j]]= aov(as.numeric(unlist(TestData[[i]][[j]])) ~ as.numeric(unlist(TestData[[i]]$Bodyweight))* as.factor(unlist(TestData[[i]]$Diet)), TestData[[i]])
+
+Ancova[[i]][[j]]= summary(aov(as.numeric(unlist(TestData[[i]][[j]])) ~ as.numeric(unlist(TestData[[i]]$Bodyweight))* as.factor(unlist(TestData[[i]]$Diet)), TestData[[i]]))
+  
+# We just want to save the Sum sq for each test and then turn that into % var explained later 
+#summary(aov(as.numeric(unlist(TestData[[1]][[8]])) ~ as.numeric(unlist(TestData[[1]]$Bodyweight))* as.factor(unlist(TestData[[1]]$Diet)), TestData[[1]]))[[1]]$"Sum Sq" 
+  
+
+}
+}
+
+
+
+```
+
+```{r}
+
+Diet <- vector(mode= "list", length = permutation_count)
+BodyWeight<- vector( mode= "list", length = permutation_count)
+Diet_BodyWeight <- vector( mode= "list",length = permutation_count)
+Residuals <- vector( mode= "list",length = permutation_count)
+
+for(i in 1:permutation_count) # goes to 100
+for(j in 8:dim(Test)[1])
+{
+{
+BodyWeight[[i]][[j]] =  Ancova[[i]][[j]][[1]]$`Sum Sq`[1]/sum(Ancova[[i]][[j]][[1]]$`Sum Sq`[1:4])
+Diet[[i]][[j]] =  Ancova[[i]][[j]][[1]]$`Sum Sq`[2]/sum(Ancova[[i]][[j]][[1]]$`Sum Sq`[1:4])
+Diet_BodyWeight[[i]][[j]] =  Ancova[[i]][[j]][[1]]$`Sum Sq`[3]/sum(Ancova[[i]][[j]][[1]]$`Sum Sq`[1:4])
+Residuals[[i]][[j]] =  Ancova[[i]][[j]][[1]]$`Sum Sq`[4]/sum(Ancova[[i]][[j]][[1]]$`Sum Sq`[1:4])
+
+}
+}
+
+for(i in 1:permutation_count)
+{
+BodyWeight[i] = as.data.frame(unlist(BodyWeight[i]))
+Diet[i] = as.data.frame(unlist(Diet[i]))
+Diet_BodyWeight[i] = as.data.frame(unlist(Diet_BodyWeight[i]))
+Residuals[i] = as.data.frame(unlist(Residuals[i]))
+}
+
+BW = do.call(cbind,BodyWeight)
+Di = do.call(cbind,Diet)
+BW_Di = do.call(cbind,Diet_BodyWeight)
+RES= do.call(cbind,Residuals)
+write.csv(BW, "BodyweightVarExpQuadriceps.csv")
+write.csv(Di, "DietVarExpQuadriceps.csv.csv")
+write.csv(BW_Di,"InteractionVarExpQuadriceps.csv.csv")
+write.csv(RES, "ResidualsVarExpQuadriceps.csv.csv")
+
+```
+
+
+

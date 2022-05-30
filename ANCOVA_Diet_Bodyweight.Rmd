@@ -1,0 +1,146 @@
+-----
+title: "ANCOVA diet is the indipendent variable and bodyweight the covariate"
+output: html_notebook
+---
+```{r}
+
+setwd("~/Documents/MultiTisssueDiet/linearmodel")
+WeightData <- read.csv("~/Documents/MultiTisssueDiet/d_20162021_BXDMultiTissueDiet_Williams_mRNA_DATAwithPhenos.csv",header=F,sep=",", na.strings="")
+NewWeightData <- WeightData[, which(colMeans(!is.na(WeightData)) > 0.5)]
+NewWeightData <- NewWeightData[ -c(1:3), ]
+WData <- as.data.frame (t(NewWeightData))
+
+Samples<-WData[ c(1,2,4,6) ]
+Samples[Samples=="CD"]<-0
+Samples[Samples=="HF"]<-1
+Samples[Samples=="Quadriceps"]<-0
+Samples[Samples=="scWAT"]<-1
+Samples[Samples=="Intestine"]<-2
+Samples[Samples=="Heart"]<-3
+Samples[Samples=="Liver"]<-4
+Samples[Samples=="BAT"]<-5
+
+NewWData<-cbind(Samples,WData)
+NewWData<-NewWData[-c(2,3),-c(5,6,8,10)]
+colnames(NewWData) <- NewWData[c(1),]
+NewWData <- NewWData[-c(1),]
+QWData <- NewWData[NewWData$Tissue == "0",]
+sWData <- NewWData[NewWData$Tissue == "1",]
+IWData <- NewWData[NewWData$Tissue == "2",]
+IWData<-IWData[, which(colMeans(!is.na(IWData)) > 0.5)]
+values_count <- sapply(lapply(IWData, unique), length)
+IWData = IWData[, values_count > 1]
+HWData <- NewWData[NewWData$Tissue == "3",]
+LWData <- NewWData[NewWData$Tissue == "4",]
+
+```
+
+```{r}
+
+InputData = IWData
+
+# Anova Diet
+AnovaDiet<- vector(mode = "list", length = 17597)
+S<- vector( mode = "list",length =  17597)
+Di <- vector( length =  17597)
+Bo <- vector( length =  17597)
+Re <- vector( length =  17597)
+
+for(i in 8: 17597)
+{
+  AnovaDiet[[i]]= aov( as.numeric(InputData[[i]])~ as.factor(InputData$Diet) + as.numeric(InputData$Bodyweight) , InputData)
+  
+}
+
+
+for(i in 8: 17597)
+{
+  S[i] = summary(AnovaDiet[[i]])
+  
+}
+
+
+for(i in 8: 17597)
+{
+  
+  Di[i] = S[[i]]$`Sum Sq`[1]/sum(S[[i]]$`Sum Sq`[1:3])*100
+  Bo[i] = S[[i]]$`Sum Sq`[2]/sum(S[[i]]$`Sum Sq`[1:3])*100
+  Re[i] = S[[i]]$`Sum Sq`[3]/sum(S[[i]]$`Sum Sq`[1:3])*100
+}
+
+
+Di= as.data.frame(Di)
+
+Re = as.data.frame(Re)
+
+VarExpDiet = cbind(Di,Bo,Re)
+
+rownames (VarExpDiet) = colnames(InputData)
+VarExpDiet = as.data.frame(VarExpDiet[-c(1:7),])
+write.csv(VarExpDiet, "AnovaVarExDietIntestine.csv")
+
+
+
+
+```
+
+```{r}
+#test 1 shuffle
+Test = transform(InputData, Bodyweight = sample(Bodyweight),Diet = sample(Diet))
+TestData = as.data.frame(Test)
+
+
+#Anova of shuffled data
+TAnovaDiet<- vector(mode = "list", length = 17597)
+S<- vector( mode = "list",length =  17597)
+TDi <- vector( length =  17597)
+TBo <- vector( length =  17597)
+TRe <- vector( length =  17597)
+for(i in 8: 17597)
+{
+  TAnovaDiet[[i]]= aov( as.numeric(TestData[[i]])~   as.factor(TestData$Diet) + as.numeric(TestData$Bodyweight) , TestData)
+  
+}
+
+
+for(i in 8: 17597)
+{
+  S[i] = summary(TAnovaDiet[[i]])
+  
+}
+
+
+for(i in 8:  17597)
+{
+  TDi[i] = S[[i]]$`Sum Sq`[1]/sum(S[[i]]$`Sum Sq`[1:3])*100
+  TBo[i] = S[[i]]$`Sum Sq`[2]/sum(S[[i]]$`Sum Sq`[1:3])*100
+  TRe[i] = S[[i]]$`Sum Sq`[3]/sum(S[[i]]$`Sum Sq`[1:3])*100
+}
+
+
+TDi= as.data.frame(TDi)
+TBo= as.data.frame(TBo)
+
+TRe = as.data.frame(TRe)
+
+TVarExpDiet = cbind(TDi,TBo,TRe)
+
+rownames (TVarExpDiet) = colnames(TestData)
+TVarExpDiet = as.data.frame(TVarExpDiet[-c(1:7),])
+write.csv(TVarExpDiet, "TAnovaVarExDietIntestine.csv")
+
+
+```
+
+
+```
+
+```{r}
+#create violin plots
+require(vioplot)
+require(ggplot)
+vioplot(VarExpDiet$Di,TVarExpDiet$TDi,VarExpDiet$Bo,TVarExpDiet$TBo,VarExpDiet$Re,TVarExpDiet$TRe ,xlab="variabels", ylab = "variance explained in % ",col=c("blueviolet", "mediumorchid", "royalblue","lightblue", "aquamarine4", "aquamarine") , main = "Violin plots of Variance explained in intestine ", names= c("Diet","Test Diet","Bodyweight","Test Bodyweight","Residuals", "Test Residuals"))
+legend("bottomright", fill=c("blueviolet", "mediumorchid", "royalblue","lightblue", "aquamarine4", "aquamarine"), legend=c("Diet real data", "Diet randomized data", "Bodyweight real data", "Bodyweigt randomized data", "Residuals real data","resudials randomized data"))
+```
+
+

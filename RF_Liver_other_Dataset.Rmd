@@ -1,0 +1,186 @@
+---
+title: "RF Liver test on other dataset"
+output: html_notebook
+---
+```{r}
+setwd("~/Documents/MultiTisssueDiet")
+WeightData <- read.csv("~/Documents/MultiTisssueDiet/d_20162021_BXDMultiTissueDiet_Williams_mRNA_DATAwithPhenos.csv",row.names= 1, header=F,sep=",", na.strings="")
+NewWeightData <- WeightData[, which(colMeans(!is.na(WeightData)) > 0.5)]
+NewWeightData <- NewWeightData[ -c(1:3), ]
+WData <- as.data.frame (t(NewWeightData))
+
+Samples<-WData[ c(1,2,4,6) ]
+Samples[Samples=="CD"]<-0
+Samples[Samples=="HF"]<-1
+Samples[Samples=="Quadriceps"]<-0
+Samples[Samples=="scWAT"]<-1
+Samples[Samples=="Intestine"]<-2
+Samples[Samples=="Heart"]<-3
+Samples[Samples=="Liver"]<-4
+Samples[Samples=="BAT"]<-5
+
+# Test Data
+LiverData <- read.csv("~/Documents/MultiTisssueDiet/c_2016_BXDLiverDiet_Williams_ALL_LIVER_DATA.csv",row.names= 1, header=F,sep=",", na.strings="")
+LiverData <- LiverData[, which(colMeans(!is.na(LiverData)) > 0.5)]
+LiverData[LiverData=="CD"]<-0
+LiverData[LiverData=="HF"]<-1
+
+Header = as.data.frame(t(LiverData[c(1:9),]))
+LiverData <- t(LiverData[c(10:30609),])
+TestData <- t(cbind(Header$Diet,LiverData))
+TestData <- as.data.frame(TestData[-c(1,2),])
+TestData <- TestData[!duplicated(TestData$V3),]
+row.names(TestData) <- TestData$V3
+TestData <- cbind(Header$Diet,t(TestData))
+TestData <- as.data.frame(TestData)
+TestData <- TestData[-c(1,2),]
+TestData <- TestData[sample(1:nrow(TestData)),]
+TestDiet <- TestData$V1
+TestData <- TestData[,-c(1)]
+TestData <- as.data.frame(lapply(TestData, as.numeric))
+TestData <- as.data.frame(t(TestData))
+WData<- WData[-c(1:7)]
+WData<- as.data.frame(t(WData))
+#rownames(WData)<- WData$V2
+DeGLiver <- read.csv("~/Documents/MultiTisssueDiet/Qgreen")
+WData <- WData[row.names(WData) %in% DeGLiver$X,]
+WData <- WData[row.names(WData) %in%row.names(TestData),]
+NewWData<-cbind(Samples, t(WData))
+LWData <- NewWData[NewWData$Tissue == "4",]
+LWData <- as.data.frame(LWData[-c(1,2),-c(1,2,4)])
+
+#TestDiet <- Header$Diet
+#TestDiet <- TestDiet[-c(1,2)]
+
+```
+
+```{r}
+## train and test sets 
+data_ <- LWData
+metadata <- as.matrix(as.factor(data_$Diet))
+data_ <- lapply(data_,as.numeric)
+data_ <- as.data.frame(data_)
+```
+
+```{r}
+# download libraries
+library(dplyr)      # data splitting 
+library(randomForest) # basic implementation
+```
+
+```{r}
+# train data 80 % and test data 20 %
+
+train <- data_
+Train<-train[-c(1,2)]
+
+```
+
+
+
+```{r}
+
+### Random Forest
+library(randomForest)
+#resRF<-randomForest(train$Diet~.,train[,-1] )
+resRF <- randomForest(x =Train[, colnames(Train) != "respvar"],
+                   y = as.factor(train$Diet), ntree = 100)
+plot(resRF)
+resRF
+
+```
+
+```{r}
+## variable import
+var_imp <- importance(resRF, type = 2)
+ Genes = row.names(var_imp)
+ importantVariabels= as.data.frame(cbind(Genes,var_imp))
+ importantVariabels = importantVariabels[importantVariabels$MeanDecreaseGini > 0,]
+```
+
+```{r}
+## parameters estimation 
+vecmtry=c(3,5,10,20,30,40,50,100)
+vecntree=c(5,10,15,20)
+matres=matrix(NA,length(vecmtry),length(vecntree))
+for (i in 1:length(vecmtry))
+  
+{
+  for (j in 1:length(vecntree))
+  {
+    resRFloc<-randomForest(x =Train[, colnames(Train) != "respvar"],
+                   y = as.factor(train$Diet) ,mtry=vecmtry[i],ntree=vecntree[j])
+    matres[i,j]=resRFloc$err.rate[vecntree[j],1]
+  }
+}	
+rownames(matres)=vecmtry	
+colnames(matres)=vecntree
+print(matres)
+```
+
+```{r}
+# adjusted RandomForest
+
+resRF<-randomForest(x =Train[, colnames(Train) != "respvar"],
+                   y = as.factor(train$Diet), ntree=2,mtry=50,localImp = TRUE)
+summary(resRF)
+plot(resRF)
+resRF
+```
+
+
+```{r}
+#Variabels importance
+library(randomForestExplainer)
+importance_frame <- measure_importance(resRF)
+plot_multi_way_importance(importance_frame,  size_measure = "p_value",main = "Importance of variables"
+                          , )
+varImpPlot(resRF)
+```
+
+```{r}
+# validation of the model
+
+pred_test <- predict(resRF, t(TestData),type = "prob")
+
+library(ROCR)                          
+
+library(pROC)
+pred_test_roc <- roc(as.factor(TestDiet),pred_test[,2])
+
+plot(pred_test_roc)
+pred_test_roc
+library(ggplot2)
+ggroc(pred_test_roc, lwd=1.2, col="blue")+
+geom_abline(intercept = 1, slope = 1, color = "red", linetype = "dashed", lwd=1.2)
+
+``` 
+
+
+```{r}
+rf <- list()
+pred_test <- list()
+pred_test_roc <- list ()
+auc <- list()
+for (iter in 1:1000)
+  {
+  rf[[iter]] <- randomForest(x =Train[, colnames(Train) != "respvar"],
+                   y = as.factor(train$Diet), ntree=2,mtry=40,localImp = TRUE)
+  
+  pred_test[[iter]] <- predict(rf[[iter]], t(TestData),type = "prob")
+  
+
+
+library(ROCR)                          
+
+library(pROC)
+pred_test_roc[[iter]]<- roc(as.factor(TestDiet),pred_test[[iter]][,2])
+  auc[[iter]]<- auc(pred_test_roc[[iter]])
+library(ggplot2)
+ggroc(pred_test_roc[[iter]], lwd=1.2, col="blue")+
+geom_abline(intercept = 1, slope = 1, color = "red", linetype = "dashed", lwd=1.2)
+
+
+}
+AUC5 <-  unlist(auc)
+``` 
